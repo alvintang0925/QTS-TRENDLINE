@@ -26,17 +26,17 @@ using namespace __fs::filesystem;
 #define PORTFOLIONUMBER 10
 #define DELTA 0.0004
 #define RUNTIMES 10000
-#define EXPERIMENTNUMBER 50
+#define EXPERIMENTNUMBER 10
 #define QTSTYPE 2 //QTS 0, GQTS 1, GNQTS 2
-#define TRENDLINETYPE 1 //linear 0, quadratic 1
+#define TRENDLINETYPE 0 //linear 0, quadratic 1
 #define SLIDETYPE 9 //M2M 0, Q2M 1, Q2Q 2, H2M 3, H2Q 4, H2H 5, Y2M 6, Y2Q 7, Y2H 8, Y2Y 9, M# 10, Q# 11, H# 12
-string MODE = "test";
+string MODE = "train";
 string TYPE;
-string STARTYEAR = "2010";
+string STARTYEAR = "2012";
 string STARTMONTH = "1";
-string ENDYEAR = "2019";
+string ENDYEAR = "2012";
 string ENDMONTH = "1";
-string fileDir = "myOutput2";
+string fileDir = "myOutput3";
 int count_curve[3] = { 0 };
 int train_range;
 double current_funds = FUNDS;
@@ -70,8 +70,8 @@ public:
     double* total_money;
     double* remain_fund;
     double m;
-    double a;
-    double b;
+    double a = -1;
+    double b = -1;
     double daily_risk = 0;
     double trend = 0;
     Stock* constituent_stocks;
@@ -410,6 +410,7 @@ void countTrend(Portfolio* portfolio_list, int porfolio_number, double funds) {
     for (int j = 0; j < porfolio_number; j++) {
         double sum = 0;
         if (TRENDLINETYPE == 0) {
+            countQuadraticYLine(portfolio_list[j]);
             double x = 0;
             double y = 0;
             for (int k = 0; k < portfolio_list[j].day_number; k++) {
@@ -457,12 +458,16 @@ void recordGAnswer(Portfolio* portfolio_list, int i) {
             pWorst.copyP(portfolio_list[j]);
         }
     }
+    
+
 
     if (gBest.trend < pBest.trend) {
-        gBest.copyP(pBest);
-        g_gen = i + 1;
+        if(gBest.a < 0 || pBest.a >= 0){
+            gBest.copyP(pBest);
+            g_gen = i + 1;
+        }
     }
-
+    
     if (gWorst.trend > pWorst.trend) {
         gWorst.copyP(pWorst);
     }
@@ -547,7 +552,8 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode) {
         }
         double c = (portfolio.getQuadraticY(myData.size() - 1) - portfolio.getQuadraticY(1)) / (myData.size() - 2);
         double d = sqrt(sum / (myData.size() - 1));
-
+        
+        outfile << "Quadratic trend line:," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
         outfile << "Quadratic m:," << c << endl;
         outfile << "Quadratic daily risk:," << d << endl;
         if(c < 0){
