@@ -18,244 +18,30 @@
 #include <cmath>
 #include <ctime>
 #include <cfloat>
-#include <Eigen/Dense>
-using namespace Eigen;
+#include "portfolio.h"
+#include "date.h"
 using namespace std;
 using namespace __fs::filesystem;
+
 #define FUNDS 10000000
 #define PORTFOLIONUMBER 10
 #define DELTA 0.0004
 #define RUNTIMES 10000
-#define EXPERIMENTNUMBER 10
+#define EXPERIMENTNUMBER 50
 #define QTSTYPE 2 //QTS 0, GQTS 1, GNQTS 2
 #define TRENDLINETYPE 0 //linear 0, quadratic 1
-#define SLIDETYPE 9 //M2M 0, Q2M 1, Q2Q 2, H2M 3, H2Q 4, H2H 5, Y2M 6, Y2Q 7, Y2H 8, Y2Y 9, M# 10, Q# 11, H# 12
+int SLIDETYPE = 0 ;//M2M 0, Q2M 1, Q2Q 2, H2M 3, H2Q 4, H2H 5, Y2M 6, Y2Q 7, Y2H 8, Y2Y 9, M# 10, Q# 11, H# 12
 string MODE = "train";
-string TYPE;
-string STARTYEAR = "2012";
-string STARTMONTH = "1";
-string ENDYEAR = "2012";
-string ENDMONTH = "1";
-string fileDir = "myOutput3";
+string STARTYEAR;
+string STARTMONTH;
+string ENDYEAR;
+string ENDMONTH;
+string fileDir = "myOutputX";
 int count_curve[3] = { 0 };
-int train_range;
 double current_funds = FUNDS;
 
 
 double* beta;
-vector < vector<string> > myData;
-
-class Stock {
-public:
-    string company_name;
-    int idx;
-    double* price_list;
-    void init(int);
-    //    ~Stock();
-};
-
-//Stock::~Stock(){
-//    delete[] price_list;
-//}
-
-
-void Stock::init(int size) {
-    price_list = new double[size];
-}
-
-class Portfolio {
-public:
-    int* data;
-    int* investment_number;
-    double* total_money;
-    double* remain_fund;
-    double m;
-    double a = -1;
-    double b = -1;
-    double daily_risk = 0;
-    double trend = 0;
-    Stock* constituent_stocks;
-    double remain_money = 0;
-    int stock_number = 0;
-    int size = 0;
-    int day_number = 0;
-    double funds = 0;
-
-    void init(int, int);
-    int getDMoney();
-    double getRemainMoney();
-    double getNormalY(int);
-    double getQuadraticY(int);
-    void copyP(Portfolio&);
-    Portfolio();
-    ~Portfolio();
-};
-
-Portfolio::Portfolio() {
-
-}
-
-Portfolio::~Portfolio() {
-    delete[] data;
-    delete[] investment_number;
-    delete[] constituent_stocks;
-    delete[] remain_fund;
-    delete[] total_money;
-}
-
-void Portfolio::init(int size, int day_number) {
-    this -> funds = FUNDS;
-    this->size = size;
-    this->day_number = day_number;
-    data = new int[size];
-    for (int j = 0; j < size; j++) {
-        data[j] = 0;
-    }
-    investment_number = new int[size];
-    constituent_stocks = new Stock[size];
-    remain_fund = new double[size];
-    total_money = new double[day_number];
-}
-
-int Portfolio::getDMoney() {
-    if (this->stock_number != 0) {
-        int temp = this -> funds;
-        return temp / this->stock_number;
-    }
-    else {
-        return this -> funds;
-    }
-}
-
-double Portfolio::getRemainMoney() {
-    if (this->stock_number != 0) {
-        double sum = 0;
-        for (int j = 0; j < stock_number; j++) {
-            sum += (double)this->getDMoney() - (this->investment_number[j] * this->constituent_stocks[j].price_list[0]);
-        }
-        int temp = this -> funds;
-        return (temp % this->stock_number) + sum + (this -> funds - temp);
-    }
-    else {
-        return this -> funds;
-    }
-}
-
-double Portfolio::getNormalY(int day) {
-    return this->m * day + this -> funds;
-}
-
-double Portfolio::getQuadraticY(int day) {
-    return this->a * pow(day, 2) + this->b * day + this -> funds;
-}
-
-void Portfolio::copyP(Portfolio& a) {
-    delete[](this->data);
-    delete[](this->investment_number);
-    delete[](this->total_money);
-    delete[](this->remain_fund);
-    delete[](this->constituent_stocks);
-    this->data = new int[a.size];
-    this->investment_number = new int[a.size];
-    this->total_money = new double[a.day_number];
-    this->remain_fund = new double[a.size];
-    this->constituent_stocks = new Stock[a.size];
-    for (int j = 0; j < a.size; j++) {
-        this->data[j] = a.data[j];
-    }
-    for (int j = 0; j < a.stock_number; j++) {
-        this->investment_number[j] = a.investment_number[j];
-        this->constituent_stocks[j] = a.constituent_stocks[j];
-        this->remain_fund[j] = a.remain_fund[j];
-    }
-    for (int j = 0; j < a.day_number; j++) {
-        this->total_money[j] = a.total_money[j];
-    }
-    this->m = a.m;
-    this->a = a.a;
-    this->b = a.b;
-    this->daily_risk = a.daily_risk;
-    this->trend = a.trend;
-    this->remain_money = a.remain_money;
-    this->stock_number = a.stock_number;
-    this->size = a.size;
-    this->day_number = a.day_number;
-}
-
-class Date {
-public:
-    tm date = { 0 };
-    int slide_numer;
-    string getYear();
-    string getQ();
-    string getMon();
-    Date getRangeEnd(int);
-    void slide();
-};
-
-
-
-string Date::getYear() {
-    return to_string((this->date.tm_year) + 1900);
-}
-
-string Date::getQ() {
-    return "Q" + to_string((this->date.tm_mon / 3) + 1);
-}
-
-string Date::getMon() {
-    if (this->date.tm_mon > 8) {
-        return to_string((this->date.tm_mon) + 1);
-    }
-    else {
-        return "0" + to_string((this->date.tm_mon) + 1);
-    }
-}
-
-Date Date::getRangeEnd(int range) {
-    tm temp = this->date;
-    temp.tm_mon += range;
-    time_t temp2 = mktime(&temp);
-    tm* temp3 = localtime(&temp2);
-    Date temp4;
-    temp4.date = *temp3;
-    return temp4;
-}
-
-void Date::slide() {
-    tm temp = this->date;
-    temp.tm_mon += slide_numer;
-    time_t temp2 = mktime(&temp);
-    tm* temp3 = localtime(&temp2);
-    this->date = *temp3;
-
-}
-
-void countQuadraticYLine(Portfolio& portfolio) {
-    MatrixXd A(portfolio.day_number, 2);
-    VectorXd Y(portfolio.day_number, 1);
-    for (int j = 0; j < portfolio.day_number; j++) {
-        for (int k = 0; k < 2; k++) {
-            A(j, k) = pow(j + 1, 2 - k);
-        }
-        Y(j, 0) = portfolio.total_money[j] - portfolio.funds;
-    }
-    Vector2d theta = A.colPivHouseholderQr().solve(Y);
-    portfolio.a = theta(0, 0);
-    portfolio.b = theta(1, 0);
-}
-
-
-Portfolio gBest;
-Portfolio gWorst;
-Portfolio pBest;
-Portfolio pWorst;
-Portfolio expBest;
-int g_gen;
-int answer_gen;
-int answer_exp;
-int answer_counter = 1;
-
 
 vector< vector<string> > readData(string filename) {
     cout << filename << endl;
@@ -282,7 +68,7 @@ vector< vector<string> > readData(string filename) {
     return data;
 }
 
-vector<string> readSpeData(string filename) {
+vector<string> readSpeData(string filename, string title) {
     cout << filename << endl;
     ifstream inFile(filename, ios::in);
     string line;
@@ -307,7 +93,7 @@ vector<string> readSpeData(string filename) {
                 }
                 //sw = false;
             }
-            if(s == "Stock#"){
+            if(s == title){
                 sw = true;
             }
         }
@@ -317,12 +103,12 @@ vector<string> readSpeData(string filename) {
     return line_data;
 }
 
-void createStock(Stock* stock_list) {
-    for (int j = 0; j < myData[0].size(); j++) {
+void createStock(Stock* stock_list, int size, int day_number, vector<vector<string>> myData) {
+    for (int j = 0; j < size; j++) {
         stock_list[j].idx = j;
-        stock_list[j].init(myData.size() - 1);
+        stock_list[j].init(day_number);
 
-        for (int k = 0; k < myData.size(); k++) {
+        for (int k = 0; k < day_number+1; k++) {
             if (k == 0) {
                 stock_list[j].company_name = myData[k][j];
             }
@@ -333,23 +119,23 @@ void createStock(Stock* stock_list) {
     }
 }
 
-void initial() {
-    gBest.trend = 0;
-    gWorst.trend = DBL_MAX;
-    gBest.init(myData[0].size(), myData.size());
-    beta = new double[myData[0].size()];
-    for (int j = 0; j < myData[0].size(); j++) {
+void initial(int size, int day_number) {
+//    gBest.trend = 0;
+//    gWorst.trend = DBL_MAX;
+//    gBest.init(size, day_number);
+    beta = new double[size];
+    for (int j = 0; j < size; j++) {
         beta[j] = 0.5;
     }
 }
 
-void gen_portfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_number, string mode) {
+void gen_portfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_number, string mode, int n, int i) {
     for (int j = 0; j < portfolio_number; j++) {
+        portfolio_list[j].exp = n + 1;
+        portfolio_list[j].gen = i + 1;
         portfolio_list[j].stock_number = 0;
         if(mode == "train"){
-            portfolio_list[j].init(myData[0].size(), myData.size() - 1);
-            for (int k = 0; k < myData[0].size(); k++) {
-
+            for (int k = 0; k < portfolio_list[j].size; k++) {
                 double r = (double)rand() / (double)RAND_MAX;
                 if (r > beta[k]) {
                     portfolio_list[j].data[k] = 0;
@@ -360,7 +146,7 @@ void gen_portfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_n
             }
         }
         
-        for(int k = 0; k < myData[0].size(); k++){
+        for(int k = 0; k < portfolio_list[j].size; k++){
             if(portfolio_list[j].data[k] == 1){
                 portfolio_list[j].constituent_stocks[portfolio_list[j].stock_number] = stock_list[k];
                 portfolio_list[j].stock_number++;
@@ -369,9 +155,8 @@ void gen_portfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_n
     }
 }
 
-void gen_testPortfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_number, string mode, vector<string>myTrainData) {
+void gen_testPortfolio(Portfolio* portfolio_list, Stock* stock_list, int portfolio_number, string mode, vector<vector<string>> myData, vector<string>myTrainData) {
     for (int j = 0; j < portfolio_number; j++) {
-        portfolio_list[j].stock_number = 0;
         for(int k = 0; k < myData[0].size(); k++){
             for(int h = 0; h < myTrainData.size(); h++){
                 if(myData[0][k] == myTrainData[h]){
@@ -393,14 +178,11 @@ void capitalLevel(Portfolio* portfolio_list, int portfolio_number, double funds)
             portfolio_list[j].remain_fund[k] = portfolio_list[j].getDMoney() - (portfolio_list[j].investment_number[k] * portfolio_list[j].constituent_stocks[k].price_list[0]);
         }
         portfolio_list[j].total_money[0] = funds;
-
-    }
-
-    for (int j = 0; j < myData.size() - 2; j++) {
-        for (int k = 0; k < portfolio_number; k++) {
-            portfolio_list[k].total_money[j + 1] = portfolio_list[k].getRemainMoney();
-            for (int h = 0; h < portfolio_list[k].stock_number; h++) {
-                portfolio_list[k].total_money[j + 1] += portfolio_list[k].investment_number[h] * portfolio_list[k].constituent_stocks[h].price_list[j + 1];
+        
+        for (int k = 0; k < portfolio_list[j].day_number - 1; k++) {
+            portfolio_list[j].total_money[k + 1] = portfolio_list[j].getRemainMoney();
+            for (int h = 0; h < portfolio_list[j].stock_number; h++) {
+                portfolio_list[j].total_money[k + 1] += portfolio_list[j].investment_number[h] * portfolio_list[j].constituent_stocks[h].price_list[k + 1];
             }
         }
     }
@@ -410,7 +192,7 @@ void countTrend(Portfolio* portfolio_list, int porfolio_number, double funds) {
     for (int j = 0; j < porfolio_number; j++) {
         double sum = 0;
         if (TRENDLINETYPE == 0) {
-            countQuadraticYLine(portfolio_list[j]);
+            //portfolio_list[j].countQuadraticYLine();
             double x = 0;
             double y = 0;
             for (int k = 0; k < portfolio_list[j].day_number; k++) {
@@ -427,7 +209,7 @@ void countTrend(Portfolio* portfolio_list, int porfolio_number, double funds) {
             }
         }
         else if (TRENDLINETYPE == 1) {
-            countQuadraticYLine(portfolio_list[j]);
+            portfolio_list[j].countQuadraticYLine();
             for (int k = 0; k < portfolio_list[j].day_number; k++) {
                 double Y;
                 Y = portfolio_list[j].getQuadraticY(k + 1);
@@ -435,7 +217,7 @@ void countTrend(Portfolio* portfolio_list, int porfolio_number, double funds) {
             }
             portfolio_list[j].m = (portfolio_list[j].getQuadraticY(portfolio_list[j].day_number) - portfolio_list[j].getQuadraticY(1)) / (portfolio_list[j].day_number - 1);
         }
-
+        
         portfolio_list[j].daily_risk = sqrt(sum / (portfolio_list[j].day_number));
 
         if (portfolio_list[j].m < 0) {
@@ -447,7 +229,7 @@ void countTrend(Portfolio* portfolio_list, int porfolio_number, double funds) {
     }
 }
 
-void recordGAnswer(Portfolio* portfolio_list, int i) {
+void recordGAnswer(Portfolio* portfolio_list, Portfolio& gBest, Portfolio& gWorst, Portfolio& pBest, Portfolio& pWorst) {
     pBest.copyP(portfolio_list[0]);
     pWorst.copyP(portfolio_list[PORTFOLIONUMBER - 1]);
     for (int j = 0; j < PORTFOLIONUMBER; j++) {
@@ -459,13 +241,11 @@ void recordGAnswer(Portfolio* portfolio_list, int i) {
         }
     }
     
-
-
+    
     if (gBest.trend < pBest.trend) {
-        if(gBest.a < 0 || pBest.a >= 0){
+//        if(gBest.a < 0 || pBest.a >= 0){
             gBest.copyP(pBest);
-            g_gen = i + 1;
-        }
+//        }
     }
     
     if (gWorst.trend > pWorst.trend) {
@@ -473,16 +253,16 @@ void recordGAnswer(Portfolio* portfolio_list, int i) {
     }
 }
 
-void adjBeta() {
-    for (int j = 0; j < myData[0].size(); j++) {
+void adjBeta(Portfolio& best, Portfolio& worst) {
+    for (int j = 0; j < best.size; j++) {
         if (QTSTYPE == 2) {
-            if (gBest.data[j] > pWorst.data[j]) {
+            if (best.data[j] > worst.data[j]) {
                 if (beta[j] < 0.5) {
                     beta[j] = 1 - beta[j];
                 }
                 beta[j] += DELTA;
             }
-            else if (gBest.data[j] < pWorst.data[j]) {
+            else if (best.data[j] < worst.data[j]) {
                 if (beta[j] > 0.5) {
                     beta[j] = 1 - beta[j];
                 }
@@ -490,43 +270,40 @@ void adjBeta() {
             }
         }
         else if (QTSTYPE == 1) {
-            if (gBest.data[j] > pWorst.data[j]) {
+            if (best.data[j] > worst.data[j]) {
                 beta[j] += DELTA;
             }
-            else if (gBest.data[j] < pWorst.data[j]) {
+            else if (best.data[j] < worst.data[j]) {
                 beta[j] -= DELTA;
             }
         }
         else {
-            if (pBest.data[j] > pWorst.data[j]) {
+            if (best.data[j] > worst.data[j]) {
                 beta[j] += DELTA;
             }
-            else if (pBest.data[j] < pWorst.data[j]) {
+            else if (best.data[j] < worst.data[j]) {
                 beta[j] -= DELTA;
             }
         }
     }
 }
 
-void recordExpAnswer(int n) {
+void recordExpAnswer(Portfolio& expBest, Portfolio& gBest) {
     if (expBest.trend < gBest.trend) {
         expBest.copyP(gBest);
-        answer_gen = g_gen;
-        answer_exp = n + 1;
-        answer_counter = 1;
+        expBest.answer_counter = 1;
     }
     else if (expBest.trend == gBest.trend) {
-        answer_counter++;
+        expBest.answer_counter++;
     }
 }
 
-string getOutputFilename(Date current_date, string mode){
-    return fileDir + "/" + TYPE + "/" + mode + "/" + mode + "_" + current_date.getYear() + "_" + current_date.getMon() + ".csv";
+string getOutputFilename(Date current_date, string mode, string file_dir, string type){
+    return file_dir + "/" + type + "/" + mode + "/" + mode + "_" + current_date.getYear() + "_" + current_date.getMon() + ".csv";
 }
 
-void outputFile(Date current_date, Portfolio& portfolio, string mode) {
+void outputFile(Date current_date, Portfolio& portfolio, string mode, string file_name) {
     ofstream outfile;
-    string file_name = getOutputFilename(current_date, mode);
     outfile.open(file_name, ios::out);
     outfile << fixed << setprecision(10);
 
@@ -536,22 +313,22 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode) {
     outfile << "Element number: ," << PORTFOLIONUMBER << endl;
     outfile << "Delta: ," << DELTA << endl;
     outfile << "Init funds: ," << portfolio.funds << endl;
-    outfile << "Final funds: ," << portfolio.total_money[myData.size() - 2] << endl;
-    outfile << "Real award: ," << portfolio.total_money[myData.size() - 2] - portfolio.funds << endl << endl;
+    outfile << "Final funds: ," << portfolio.total_money[portfolio.day_number - 1] << endl;
+    outfile << "Real award: ," << portfolio.total_money[portfolio.day_number - 1] - portfolio.funds << endl << endl;
     outfile << "m: ," << portfolio.m << endl;
     outfile << "Daily_risk: ," << portfolio.daily_risk << endl;
     outfile << "Trend: ," << portfolio.trend << endl << endl;
 
     if (TRENDLINETYPE == 0) {
-        countQuadraticYLine(portfolio);
+        portfolio.countQuadraticYLine();
         double sum = 0;
-        for (int k = 0; k < myData.size() - 1; k++) {
+        for (int k = 0; k < portfolio.day_number; k++) {
             double Y;
             Y = portfolio.getQuadraticY(k + 1);
             sum += (portfolio.total_money[k] - Y) * (portfolio.total_money[k] - Y);
         }
-        double c = (portfolio.getQuadraticY(myData.size() - 1) - portfolio.getQuadraticY(1)) / (myData.size() - 2);
-        double d = sqrt(sum / (myData.size() - 1));
+        double c = (portfolio.getQuadraticY(portfolio.day_number) - portfolio.getQuadraticY(1)) / (portfolio.day_number - 1);
+        double d = sqrt(sum / (portfolio.day_number));
         
         outfile << "Quadratic trend line:," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
         outfile << "Quadratic m:," << c << endl;
@@ -567,18 +344,18 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode) {
         double x = 0;
         double y = 1;
         double sum = 0;
-        for (int k = 0; k < myData.size() - 2; k++) {
+        for (int k = 0; k < portfolio.day_number - 1; k++) {
             x += (k + 2) * (portfolio.total_money[k + 1] - portfolio.funds);
             y += (k + 2) * (k + 2);
         }
 
         double c = x / y;
-        for (int k = 0; k < myData.size() - 1; k++) {
+        for (int k = 0; k < portfolio.day_number; k++) {
             double Y;
             Y = c * (k + 1) + portfolio.funds;
             sum += (portfolio.total_money[k] - Y) * (portfolio.total_money[k] - Y);
         }
-        double d = sqrt(sum / (myData.size() - 1));
+        double d = sqrt(sum / (portfolio.day_number));
 
         outfile << "Linear m:," << c << endl;
         outfile << "Linear daily risk:," << d << endl;
@@ -589,9 +366,9 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode) {
         }
     }
 
-    outfile << "Best generation," << answer_gen << endl;
-    outfile << "Best experiment," << answer_exp << endl;
-    outfile << "Best answer times," << answer_counter << endl << endl;
+    outfile << "Best generation," << portfolio.gen << endl;
+    outfile << "Best experiment," << portfolio.exp << endl;
+    outfile << "Best answer times," << portfolio.answer_counter << endl << endl;
 
     outfile << "Stock number: ," << portfolio.stock_number << endl;
     outfile << "Stock#,";
@@ -618,7 +395,7 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode) {
     }
     outfile << endl;
 
-    for (int j = 0; j < myData.size() - 1; j++) {
+    for (int j = 0; j < portfolio.day_number; j++) {
         outfile << "FS(" << j + 1 << "),";
         for (int k = 0; k < portfolio.stock_number; k++) {
             outfile << portfolio.constituent_stocks[k].price_list[j] * portfolio.investment_number[k] << ",";
@@ -639,7 +416,7 @@ bool isFinish(tm current_data, tm finish_date) {
     }
     return false;
 }
-string getPriceFilename(Date current_date, string mode) {
+string getPriceFilename(Date current_date, string mode, string TYPE, int train_range) {
     Date temp;
     if(mode == "train"){
         switch (SLIDETYPE) {
@@ -828,78 +605,125 @@ string getPriceFilename(Date current_date, string mode) {
             break;
         }
     }
+    return "";
 }
 
 
-void setDate(Date& current_date, Date& finish_date) {
-    current_date.date.tm_year = atoi(STARTYEAR.c_str()) - 1900;
-    current_date.date.tm_mon = atoi(STARTMONTH.c_str()) - 1;
-    current_date.date.tm_mday = 1;
-    finish_date.date.tm_year = atoi(ENDYEAR.c_str()) - 1900;
-    finish_date.date.tm_mon = atoi(ENDMONTH.c_str()) - 1;
-    finish_date.date.tm_mday = 1;
+void setDate(Date& current_date, Date& finish_date, string& TYPE, int& train_range) {
     switch (SLIDETYPE) {
     case 0:
+        STARTYEAR = "2009";
+        STARTMONTH = "12";
+        ENDYEAR = "2019";
+        ENDMONTH = "11";
         TYPE = "M2M";
         train_range = 1;
         current_date.slide_numer = 1;
         break;
     case 1:
+        STARTYEAR = "2009";
+        STARTMONTH = "10";
+        ENDYEAR = "2019";
+        ENDMONTH = "9";
         TYPE = "Q2M";
         train_range = 3;
         current_date.slide_numer = 1;
         break;
     case 2:
+        STARTYEAR = "2009";
+        STARTMONTH = "10";
+        ENDYEAR = "2019";
+        ENDMONTH = "7";
         TYPE = "Q2Q";
         train_range = 3;
         current_date.slide_numer = 3;
         break;
     case 3:
+        STARTYEAR = "2009";
+        STARTMONTH = "7";
+        ENDYEAR = "2019";
+        ENDMONTH = "6";
         TYPE = "H2M";
         train_range = 6;
         current_date.slide_numer = 1;
         break;
     case 4:
+        STARTYEAR = "2009";
+        STARTMONTH = "7";
+        ENDYEAR = "2019";
+        ENDMONTH = "4";
         TYPE = "H2Q";
         train_range = 6;
         current_date.slide_numer = 3;
         break;
     case 5:
+        STARTYEAR = "2009";
+        STARTMONTH = "7";
+        ENDYEAR = "2019";
+        ENDMONTH = "1";
         TYPE = "H2H";
         train_range = 6;
         current_date.slide_numer = 6;
         break;
     case 6:
+        STARTYEAR = "2009";
+        STARTMONTH = "2";
+        ENDYEAR = "2018";
+        ENDMONTH = "12";
         TYPE = "Y2M";
         train_range = 12;
         current_date.slide_numer = 1;
         break;
     case 7:
+        STARTYEAR = "2009";
+        STARTMONTH = "1";
+        ENDYEAR = "2018";
+        ENDMONTH = "10";
         TYPE = "Y2Q";
         train_range = 12;
         current_date.slide_numer = 3;
         break;
     case 8:
+        STARTYEAR = "2009";
+        STARTMONTH = "7";
+        ENDYEAR = "2018";
+        ENDMONTH = "7";
         TYPE = "Y2H";
         train_range = 12;
         current_date.slide_numer = 6;
         break;
     case 9:
+        STARTYEAR = "2009";
+        STARTMONTH = "1";
+        ENDYEAR = "2018";
+        ENDMONTH = "1";
         TYPE = "Y2Y";
         train_range = 12;
         current_date.slide_numer = 12;
         break;
     case 10:
+        STARTYEAR = "2010";
+        STARTMONTH = "1";
+        ENDYEAR = "2019";
+        ENDMONTH = "12";
         TYPE = "M#";
         train_range = 1;
         current_date.slide_numer = 1;
         break;
     case 11:
+        STARTYEAR = "2010";
+        STARTMONTH = "1";
+        ENDYEAR = "2019";
+        ENDMONTH = "10";
         TYPE = "Q#";
         train_range = 3;
         current_date.slide_numer = 3;
         break;
     case 12:
+        STARTYEAR = "2010";
+        STARTMONTH = "1";
+        ENDYEAR = "2019";
+        ENDMONTH = "7";
         TYPE = "H#";
         train_range = 6;
         current_date.slide_numer = 6;
@@ -908,98 +732,70 @@ void setDate(Date& current_date, Date& finish_date) {
     if(MODE == "train"){
         train_range = 0;
     }
+    current_date.date.tm_year = atoi(STARTYEAR.c_str()) - 1900;
+    current_date.date.tm_mon = atoi(STARTMONTH.c_str()) - 1;
+    current_date.date.tm_mday = 1;
+    finish_date.date.tm_year = atoi(ENDYEAR.c_str()) - 1900;
+    finish_date.date.tm_mon = atoi(ENDMONTH.c_str()) - 1;
+    finish_date.date.tm_mday = 1;
 }
 
-void createDir(){
-    create_directory(fileDir);
-    create_directory(fileDir + "/" + TYPE);
-    create_directory(fileDir + "/" + TYPE + "/train");
-    create_directory(fileDir + "/" + TYPE + "/test");
-//    create_directory(fileDir + "/Q2M");
-//    create_directory(fileDir + "/Q2M/train");
-//    create_directory(fileDir + "/Q2M/test");
-//    create_directory(fileDir + "/H2M");
-//    create_directory(fileDir + "/H2M/train");
-//    create_directory(fileDir + "/H2M/test");
-//    create_directory(fileDir + "/Y2M");
-//    create_directory(fileDir + "/Y2M/train");
-//    create_directory(fileDir + "/Y2M/test");
-//    create_directory(fileDir + "/Q2Q");
-//    create_directory(fileDir + "/Q2Q/train");
-//    create_directory(fileDir + "/Q2Q/test");
-//    create_directory(fileDir + "/H2Q");
-//    create_directory(fileDir + "/H2Q/train");
-//    create_directory(fileDir + "/H2Q/test");
-//    create_directory(fileDir + "/Y2Q");
-//    create_directory(fileDir + "/Y2Q/train");
-//    create_directory(fileDir + "/Y2Q/test");
-//    create_directory(fileDir + "/H2H");
-//    create_directory(fileDir + "/H2H/train");
-//    create_directory(fileDir + "/H2H/test");
-//    create_directory(fileDir + "/Y2H");
-//    create_directory(fileDir + "/Y2H/train");
-//    create_directory(fileDir + "/Y2H/test");
-//    create_directory(fileDir + "/Y2Y");
-//    create_directory(fileDir + "/Y2Y/train");
-//    create_directory(fileDir + "/Y2Y/test");
-//    create_directory(fileDir + "/M#");
-//    create_directory(fileDir + "/M#/train");
-//    create_directory(fileDir + "/M#/test");
-//    create_directory(fileDir + "/Q#");
-//    create_directory(fileDir + "/Q#/train");
-//    create_directory(fileDir + "/Q#/test");
-//    create_directory(fileDir + "/H#");
-//    create_directory(fileDir + "/H#/train");
-//    create_directory(fileDir + "/H#/test");
+void createDir(string file_dir, string type){
+    create_directory(file_dir);
+    create_directory(file_dir + "/" + type);
+    create_directory(file_dir + "/" + type + "/train");
+    create_directory(file_dir + "/" + type + "/test");
 }
 
 
 
 
 int main(int argc, const char* argv[]) {
+    
+    for(int s = 0; s < 13; s++){
+        SLIDETYPE = s;
     double START, END;
     START = clock();
-
     srand(114);
     cout << fixed << setprecision(10);
     Date current_date, finish_date;
-    setDate(current_date, finish_date);
-    createDir();
+    string TYPE;
+    int train_range;
+    setDate(current_date, finish_date, TYPE, train_range);
+    createDir(fileDir, TYPE);
     
-    double out_m = 0;
-    double out_daily_risk = 0;
-    double out_trend = 0;
-    double out_real_award = 0;
-    double out_daily_award[250] = {0};
-    int out_counter = 0;
     do {
-        string filename;
         if(MODE == "train"){
-            filename = getPriceFilename(current_date, MODE);
-            myData = readData(filename);
+            vector<vector<string>> myData = readData(getPriceFilename(current_date, MODE, TYPE, train_range));
             Stock* stock_list = new Stock[myData[0].size()];
-            createStock(stock_list);
-            expBest.trend = 0;
-            expBest.init(myData[0].size(), myData.size());
+            createStock(stock_list, myData[0].size(), myData.size() - 1, myData);
+            Portfolio expBest(myData[0].size(), myData.size() - 1, FUNDS);
             for (int n = 0; n < EXPERIMENTNUMBER; n++) {
-                initial();
+                Portfolio* portfolio_list = new Portfolio[PORTFOLIONUMBER];
+                Portfolio gBest(myData[0].size(), myData.size() - 1, FUNDS);
+                Portfolio gWorst(myData[0].size(), myData.size() - 1, FUNDS);
+                gWorst.trend = DBL_MAX;
+                initial(myData[0].size(), myData.size() - 1);
                 for (int i = 0; i < RUNTIMES; i++) {
-                    Portfolio* portfolio_list = new Portfolio[PORTFOLIONUMBER];
-                    gen_portfolio(portfolio_list, stock_list, PORTFOLIONUMBER, "train");
+                    Portfolio pBest(myData[0].size(), myData.size() - 1, FUNDS);
+                    Portfolio pWorst(myData[0].size(), myData.size() - 1, FUNDS);
+                    for(int j = 0; j < PORTFOLIONUMBER; j++){
+                        portfolio_list[j] = Portfolio(myData[0].size(), myData.size() - 1, FUNDS);
+                    }
+                    gen_portfolio(portfolio_list, stock_list, PORTFOLIONUMBER, "train", n, i);
                     capitalLevel(portfolio_list, PORTFOLIONUMBER, FUNDS);
                     countTrend(portfolio_list, PORTFOLIONUMBER, FUNDS);
-                    //            countQuadraticYLine(portfolio_list);
-                    recordGAnswer(portfolio_list, i);
-                    adjBeta();
-                    delete[] portfolio_list;
+                    recordGAnswer(portfolio_list, gBest, gWorst, pBest, pWorst);
+                    adjBeta(gBest, pWorst);
                 }
-                recordExpAnswer(n);
+                delete[] portfolio_list;
+                recordExpAnswer(expBest, gBest);
                 cout << "___" << n << "___" << endl;
             }
-            outputFile(current_date, expBest, "train");
+            outputFile(current_date, expBest, "train", getOutputFilename(current_date, MODE, fileDir, TYPE));
             delete[] stock_list;
-            cout << "exp: " << answer_exp << endl;
-            cout << "gen: " << answer_gen << endl;
+            cout << "exp: " << expBest.exp << endl;
+            cout << "gen: " << expBest.gen << endl;
             cout << "m:" << expBest.m << endl;
             cout << "risk:" << expBest.daily_risk << endl;
             cout << "trend: " << expBest.trend << endl;
@@ -1013,9 +809,7 @@ int main(int argc, const char* argv[]) {
                 count_curve[1]++;
             }
         }
-        
-        
-        
+
 //        if(MODE == "test"){
 //            filename = getPriceFilename(current_date, MODE);
 //            myData = readData(filename);
@@ -1036,32 +830,19 @@ int main(int argc, const char* argv[]) {
 //            delete[] test_stock_list;
 //        }
         if(MODE == "test"){
-            vector<string> myTrainData = readSpeData(getOutputFilename(current_date.getRangeEnd(-1 * train_range), "train"));
-            filename = getPriceFilename(current_date, MODE);
-            myData = readData(filename);
+            vector<string> myTrainData = readSpeData(getOutputFilename(current_date.getRangeEnd(-1 * train_range), "train", fileDir, TYPE), "stock#");
+            vector < vector<string> > myData = readData(getPriceFilename(current_date, MODE, TYPE, train_range));
             Stock* test_stock_list = new Stock[myData[0].size()];
-            createStock(test_stock_list);
+            createStock(test_stock_list, myData[0].size(), myData.size() - 1, myData);
             Portfolio* test_portfolio = new Portfolio[1];
-            test_portfolio[0].init(myData[0].size(), myData.size()-1);
-            gen_testPortfolio(test_portfolio, test_stock_list, 1, "test", myTrainData);
+            gen_testPortfolio(test_portfolio, test_stock_list, 1, "test", myData, myTrainData);
 //            test_portfolio[0].funds = current_funds;
             
             capitalLevel(test_portfolio, 1, current_funds);
             countTrend(test_portfolio, 1, current_funds);
 //            current_funds = test_portfolio[0].total_money[test_portfolio[0].day_number - 1];
-            out_m += test_portfolio[0].m;
-            out_daily_risk += test_portfolio[0].daily_risk;
-            if(test_portfolio[0].trend < 0){
-                out_trend += test_portfolio[0].m / test_portfolio[0].daily_risk;
-            }else{
-                out_trend += test_portfolio[0].trend;
-            }
-            out_real_award += test_portfolio[0].total_money[myData.size() - 2] - test_portfolio[0].funds;
-            for(int j = 0; j < 250; j++){
-                out_daily_award[j] += test_portfolio[0].total_money[j];
-            }
-            out_counter++;
-            outputFile(current_date, test_portfolio[0], "test");
+            
+            outputFile(current_date, test_portfolio[0], "test", getOutputFilename(current_date, MODE, fileDir, TYPE));
             delete[] test_portfolio;
             delete[] test_stock_list;
             
@@ -1069,6 +850,7 @@ int main(int argc, const char* argv[]) {
         current_date.slide();
     } while (!isFinish(current_date.date, finish_date.date));
     END = clock();
+    
     double finish_time = (END - START) / CLOCKS_PER_SEC;
     if(MODE == "train"){
         ofstream outfile_time;
@@ -1104,6 +886,6 @@ int main(int argc, const char* argv[]) {
 //        outfile_time << "a:," << test_portfolio[0].a << endl;
 //        outfile_time << "b:," << test_portfolio[0].b << endl;
 //    }
-
+    }
     return 0;
 }
