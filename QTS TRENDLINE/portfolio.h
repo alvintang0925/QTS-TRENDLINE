@@ -21,23 +21,23 @@ public:
     int gen;
     int exp;
     int answer_counter = 0;
-    int* data;
-    int* investment_number;
-    double* total_money;
-    double* remain_fund;
+    int* data = NULL;
+    int* investment_number = NULL;
+    double* total_money = NULL;
+    double* remain_fund = NULL;
     double m = 0;
     double a = -1;
     double b = -1;
     double daily_risk = 0;
     double trend = 0;
-    Stock* constituent_stocks;
+    Stock* constituent_stocks = NULL;
     double remain_money = 0;
     int stock_number = 0;
     int size = 0;
     int day_number = 0;
     double funds = 0;
     
-
+    void init();
     void init(int, int, int);
     int getDMoney();
     double getRemainMoney();
@@ -50,7 +50,8 @@ public:
     ~Portfolio();
 };
 
-Portfolio::Portfolio(){};
+Portfolio::Portfolio(){
+};
 
 Portfolio::Portfolio(int size, int day_number, int funds) {
     this -> m = 0;
@@ -61,36 +62,72 @@ Portfolio::Portfolio(int size, int day_number, int funds) {
     this -> funds = funds;
     this -> size = size;
     this -> day_number = day_number;
-    data = new int[size];
+    this -> data = new int[size];
     for (int j = 0; j < size; j++) {
         data[j] = 0;
     }
-    investment_number = new int[size];
-    constituent_stocks = new Stock[size];
-    remain_fund = new double[size];
-    total_money = new double[day_number];
+    this -> investment_number = new int[size];
+    this -> constituent_stocks = new Stock[size];
+    this -> remain_fund = new double[size];
+    this -> total_money = new double[day_number];
 }
 
 Portfolio::~Portfolio() {
-//    delete[] data;
-//    delete[] investment_number;
-//    delete[] constituent_stocks;
-//    delete[] remain_fund;
-//    delete[] total_money;
+    delete[] this -> data;
+    delete[] this -> investment_number;
+    delete[] this -> constituent_stocks;
+    delete[] this -> remain_fund;
+    delete[] this -> total_money;
+}
+
+void Portfolio::init() {
+    this -> m = 0;
+    this -> daily_risk = 0;
+    this -> trend = 0;
+    this -> stock_number = 0;
+    this -> remain_money = 0;
+    if(this -> data != NULL){
+        delete[] this -> data;
+        delete[] this -> investment_number;
+        delete[] this -> constituent_stocks;
+        delete[] this -> remain_fund;
+        delete[] this -> total_money;
+    }
+    this -> data = new int[this -> size];
+    for (int j = 0; j < this -> size; j++) {
+        data[j] = 0;
+    }
+    this -> investment_number = new int[this ->size];
+    this -> constituent_stocks = new Stock[this -> size];
+    this -> remain_fund = new double[this -> size];
+    this -> total_money = new double[this -> day_number];
 }
 
 void Portfolio::init(int size, int day_number, int funds) {
+    this -> m = 0;
+    this -> daily_risk = 0;
+    this -> trend = 0;
+    this -> stock_number = 0;
+    this -> remain_money = 0;
     this -> funds = funds;
     this -> size = size;
     this -> day_number = day_number;
-    data = new int[size];
+    if(this -> data != NULL){
+        delete[] this -> data;
+        delete[] this -> investment_number;
+        delete[] this -> constituent_stocks;
+        delete[] this -> remain_fund;
+        delete[] this -> total_money;
+    }
+    this -> data = new int[size];
     for (int j = 0; j < size; j++) {
         data[j] = 0;
     }
-    investment_number = new int[size];
-    constituent_stocks = new Stock[size];
-    remain_fund = new double[size];
-    total_money = new double[day_number];
+    
+    this -> investment_number = new int[size];
+    this -> constituent_stocks = new Stock[size];
+    this -> remain_fund = new double[size];
+    this -> total_money = new double[day_number];
 }
 
 int Portfolio::getDMoney() {
@@ -142,16 +179,16 @@ double Portfolio::getQuadraticY(int day) {
 }
 
 void Portfolio::copyP(Portfolio& a) {
-    delete[](this->data);
-    delete[](this->investment_number);
-    delete[](this->total_money);
-    delete[](this->remain_fund);
-    delete[](this->constituent_stocks);
-    this->data = new int[a.size];
-    this->investment_number = new int[a.size];
-    this->total_money = new double[a.day_number];
-    this->remain_fund = new double[a.size];
-    this->constituent_stocks = new Stock[a.size];
+//    delete[](this->data);
+//    delete[](this->investment_number);
+//    delete[](this->total_money);
+//    delete[](this->remain_fund);
+//    delete[](this->constituent_stocks);
+//    this->data = new int[a.size];
+//    this->investment_number = new int[a.size];
+//    this->total_money = new double[a.day_number];
+//    this->remain_fund = new double[a.size];
+//    this->constituent_stocks = new Stock[a.size];
     for (int j = 0; j < a.size; j++) {
         this->data[j] = a.data[j];
     }
