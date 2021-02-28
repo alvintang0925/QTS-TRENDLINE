@@ -28,15 +28,15 @@ using namespace __fs::filesystem;
 #define DELTA 0.0004
 #define RUNTIMES 10000
 #define EXPERIMENTNUMBER 2
-#define QTSTYPE 2 //QTS 0, GQTS 1, GNQTS 2
-#define TRENDLINETYPE 1 //linear 0, quadratic 1
+#define QTSTYPE 1 //QTS 0, GQTS 1, GNQTS 2
+#define TRENDLINETYPE 0 //linear 0, quadratic 1
 int SLIDETYPE = 0;//M2M 0, Q2M 1, Q2Q 2, H2M 3, H2Q 4, H2H 5, Y2M 6, Y2Q 7, Y2H 8, Y2Y 9, M# 10, Q# 11, H# 12
 string MODE = "train";
 string STARTYEAR;
 string STARTMONTH;
 string ENDYEAR;
 string ENDMONTH;
-string fileDir = "myOutputY";
+string fileDir = "myOutputX";
 int count_curve[3] = { 0 };
 double current_funds = FUNDS;
 
@@ -305,19 +305,19 @@ string getOutputFilename(Date current_date, string mode, string file_dir, string
 void outputFile(Date current_date, Portfolio& portfolio, string mode, string file_name) {
     ofstream outfile;
     outfile.open(file_name, ios::out);
-    outfile << fixed << setprecision(10);
+    outfile << setprecision(15);
 
 
-    outfile << "Exp times: ," << EXPERIMENTNUMBER << endl;
-    outfile << "Iteration: ," << RUNTIMES << endl;
-    outfile << "Element number: ," << PORTFOLIONUMBER << endl;
-    outfile << "Delta: ," << DELTA << endl;
-    outfile << "Init funds: ," << portfolio.funds << endl;
-    outfile << "Final funds: ," << portfolio.total_money[portfolio.day_number - 1] << endl;
-    outfile << "Real award: ," << portfolio.total_money[portfolio.day_number - 1] - portfolio.funds << endl << endl;
-    outfile << "m: ," << portfolio.m << endl;
-    outfile << "Daily_risk: ," << portfolio.daily_risk << endl;
-    outfile << "Trend: ," << portfolio.trend << endl << endl;
+    outfile << "Exp times," << EXPERIMENTNUMBER << endl;
+    outfile << "Iteration," << RUNTIMES << endl;
+    outfile << "Element number," << PORTFOLIONUMBER << endl;
+    outfile << "Delta," << DELTA << endl;
+    outfile << "Init funds," << portfolio.funds << endl;
+    outfile << "Final funds," << portfolio.total_money[portfolio.day_number - 1] << endl;
+    outfile << "Real award," << portfolio.total_money[portfolio.day_number - 1] - portfolio.funds << endl << endl;
+    outfile << "m," << portfolio.m << endl;
+    outfile << "Daily_risk," << portfolio.daily_risk << endl;
+    outfile << "Trend," << portfolio.trend << endl << endl;
 
     if (TRENDLINETYPE == 0) {
         portfolio.countQuadraticYLine();
@@ -330,17 +330,17 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode, string fil
         double c = (portfolio.getQuadraticY(portfolio.day_number) - portfolio.getQuadraticY(1)) / (portfolio.day_number - 1);
         double d = sqrt(sum / (portfolio.day_number));
         
-        outfile << "Quadratic trend line:," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
-        outfile << "Quadratic m:," << c << endl;
-        outfile << "Quadratic daily risk:," << d << endl;
+        outfile << "Quadratic trend line," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
+        outfile << "Quadratic m," << c << endl;
+        outfile << "Quadratic daily risk," << d << endl;
         if(c < 0){
-            outfile << "Quadratic trend:," << c * d << endl << endl;
+            outfile << "Quadratic trend," << c * d << endl << endl;
         }else{
-            outfile << "Quadratic trend:," << c / d << endl << endl;
+            outfile << "Quadratic trend," << c / d << endl << endl;
         }
     }
     else {
-        outfile << "Quadratic trend line:," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
+        outfile << "Quadratic trend line," << portfolio.a << "x^2 + " << portfolio.b << "x + " << FUNDS << endl << endl;
         double x = 0;
         double y = 1;
         double sum = 0;
@@ -357,12 +357,12 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode, string fil
         }
         double d = sqrt(sum / (portfolio.day_number));
 
-        outfile << "Linear m:," << c << endl;
-        outfile << "Linear daily risk:," << d << endl;
+        outfile << "Linear m," << c << endl;
+        outfile << "Linear daily risk," << d << endl;
         if(c < 0){
-            outfile << "Linear trend:," << c * d << endl << endl;
+            outfile << "Linear trend," << c * d << endl << endl;
         }else{
-            outfile << "Linear trend:," << c / d << endl << endl;
+            outfile << "Linear trend," << c / d << endl << endl;
         }
     }
 
@@ -370,26 +370,26 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode, string fil
     outfile << "Best experiment," << portfolio.exp << endl;
     outfile << "Best answer times," << portfolio.answer_counter << endl << endl;
 
-    outfile << "Stock number: ," << portfolio.stock_number << endl;
+    outfile << "Stock number," << portfolio.stock_number << endl;
     outfile << "Stock#,";
     for (int j = 0; j < portfolio.stock_number; j++) {
         outfile << portfolio.constituent_stocks[j].company_name << ",";
     }
     outfile << endl;
 
-    outfile << "Number: ,";
+    outfile << "Number,";
     for (int j = 0; j < portfolio.stock_number; j++) {
         outfile << portfolio.investment_number[j] << ",";
     }
     outfile << endl;
 
-    outfile << "Distribue funds: ,";
+    outfile << "Distribue funds,";
     for (int j = 0; j < portfolio.stock_number; j++) {
         outfile << portfolio.getDMoney() << ",";
     }
     outfile << endl;
 
-    outfile << "Remain funds: ,";
+    outfile << "Remain funds,";
     for (int j = 0; j < portfolio.stock_number; j++) {
         outfile << portfolio.remain_fund[j] << ",";
     }
@@ -398,7 +398,7 @@ void outputFile(Date current_date, Portfolio& portfolio, string mode, string fil
     for (int j = 0; j < portfolio.day_number; j++) {
         outfile << "FS(" << j + 1 << "),";
         for (int k = 0; k < portfolio.stock_number; k++) {
-            outfile << portfolio.constituent_stocks[k].price_list[j] * portfolio.investment_number[k] << ",";
+            outfile << (portfolio.constituent_stocks[k].price_list[j] * portfolio.investment_number[k]) + portfolio.remain_fund[k] << ",";
         }
         outfile << portfolio.total_money[j] << endl;
     }
@@ -757,7 +757,7 @@ int main(int argc, const char* argv[]) {
         double START, END;
         START = clock();
         srand(114);
-        cout << fixed << setprecision(10);
+        cout << setprecision(10);
         Date current_date, finish_date;
         string TYPE;
         int train_range;
@@ -863,6 +863,7 @@ int main(int argc, const char* argv[]) {
             outfile_time << "down: " << count_curve[0] << endl;
             cout << "total_time: " << (END - START) / CLOCKS_PER_SEC << endl;
         }
+        
     //    if(MODE == "test"){
     //        ofstream outfile_time;
     //        string file_name = fileDir + "/" + TYPE + "/" + MODE + "/avgData.csv";
