@@ -27,16 +27,16 @@ using namespace filesystem;
 #define PORTFOLIONUMBER 10
 #define DELTA 0.0004
 #define RUNTIMES 10000
-#define EXPERIMENTNUMBER 2
+#define EXPERIMENTNUMBER 50
 #define QTSTYPE 2 //QTS 0, GQTS 1, GNQTS 2
 #define TRENDLINETYPE 0 //linear 0, quadratic 1
 int SLIDETYPE = 0;//M2M 0, Q2M 1, Q2Q 2, H2M 3, H2Q 4, H2H 5, Y2M 6, Y2Q 7, Y2H 8, Y2Y 9, M# 10, Q# 11, H# 12
-string MODE = "train";
+string MODE = "test";
 string STARTYEAR;
 string STARTMONTH;
 string ENDYEAR;
 string ENDMONTH;
-string fileDir = "myOutputZ";
+string fileDir = "(OSX)2021_03_06_linear_output";
 int count_curve[3] = { 0 };
 double current_funds = FUNDS;
 
@@ -752,10 +752,10 @@ void createDir(string file_dir, string type){
 
 int main(int argc, const char* argv[]) {
     
-    for(int s = 0; s < 13; s++){
+    for(int s = 0; s < 1; s++){
         double d_counter = 0;
         double d_sum = 0;
-        SLIDETYPE = s;
+        SLIDETYPE = 5;
         double START, END;
         START = clock();
         srand(114);
@@ -837,12 +837,14 @@ int main(int argc, const char* argv[]) {
     //        }
             
             if(MODE == "test"){
-                vector<string> myTrainData = readSpeData(getOutputFilename(current_date.getRangeEnd(-1 * train_range), "train", fileDir, TYPE), "stock#");
-                vector < vector<string> > myData = readData(getPriceFilename(current_date, MODE, TYPE, train_range));
+                vector<string> myTrainData = readSpeData(getOutputFilename(current_date, "train", fileDir, TYPE), "Stock#");
+                vector < vector<string> > myData = readData(getPriceFilename(current_date.getRangeEnd(train_range), MODE, TYPE, train_range));
                 Stock* test_stock_list = new Stock[myData[0].size()];
                 createStock(test_stock_list, myData[0].size(), myData.size() - 1, myData);
                 Portfolio* test_portfolio = new Portfolio[1];
+                test_portfolio[0].init(myData[0].size(), myData.size() - 1, current_funds);
                 gen_testPortfolio(test_portfolio, test_stock_list, 1, "test", myData, myTrainData);
+                 
     //            test_portfolio[0].funds = current_funds;
                 
                 capitalLevel(test_portfolio, 1, current_funds);
@@ -866,7 +868,7 @@ int main(int argc, const char* argv[]) {
             outfile_time << "up: " << count_curve[2] << endl;
             outfile_time << "linear: " << count_curve[1] << endl;
             outfile_time << "down: " << count_curve[0] << endl;
-            outfile_time << "avg days: " << d_sum / d_counter << " sec" << endl;
+            outfile_time << "avg days: " << d_sum / d_counter << " days" << endl;
             cout << "total_time: " << (END - START) / CLOCKS_PER_SEC << endl;
         }
         
